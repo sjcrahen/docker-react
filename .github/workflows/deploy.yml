@@ -41,10 +41,19 @@ jobs:
           -x 'Dockerfile.dev'
 
       - name: Deploy to EB
-        uses: einaregilsson/beanstalk-deploy@v20
-        with:
-          application_name: frontend
-          environment_name: Frontend-env
-          region: us-east-2
-          version_label: ${{github.run_number}}-${{github.sha}}
-          filename: deploy_package.zip
+        run: |
+          VERSION_LABEL="${GITHUB_RUN_NUMBER}-${GITHUB_SHA}"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name frontend \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket=$(aws elasticbeanstalk describe-environments \
+              --environment-names Frontend-env \
+              --query "Environments[0].ApplicationName" \
+              --output text | tr -d '\n'),S3Key="$VERSION_LABEL.zip"
+
+          aws s3 cp deploy_package.zip "s3://elasticbeanstalk-us-east-2-$(aws sts get-caller-identity --query Account --output text)/$VERSION_LABEL.zip"
+
+          aws elasticbeanstalk update-environment \
+            --environment-name Frontend-env \
+            --version-label "$VERSION_LABEL"
