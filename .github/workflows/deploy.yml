@@ -9,22 +9,36 @@ permissions:
   id-token: write
   contents: read
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t scrahen/docker-react -f Dockerfile.dev .
-      - run: docker run -e CI=true scrahen/docker-react npm run test
+concurrency:
+  group: frontend-deploy
+  cancel-in-progress: true
 
-      - name: Configure credentials
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Build test image
+        run: docker build -t docker-react-test -f Dockerfile.dev .
+
+      - name: Run tests
+        run: docker run -e CI=true docker-react-test npm test -- --watch=false
+
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
           aws-region: us-east-2
 
-      - name: Generate deployment package
-        run: zip -r deploy_package.zip . -x '*.git*' 'node_modules/*'
+      - name: Create deployment package
+        run: |
+          zip -r deploy_package.zip . \
+          -x '*.git*' \
+          -x 'node_modules/*' \
+          -x 'Dockerfile.dev'
 
       - name: Deploy to EB
         uses: einaregilsson/beanstalk-deploy@v20
