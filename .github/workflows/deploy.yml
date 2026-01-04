@@ -1,6 +1,9 @@
 name: Deploy Frontend
 
-on: [push]
+on: 
+  push:
+    branches:
+      - master
 
 jobs:
   build:
@@ -9,3 +12,15 @@ jobs:
       - uses: actions/checkout@v5
       - run: docker build -t scrahen/docker-react -f Dockerfile.dev .
       - run: docker run -e CI=true scrahen/docker-react npm run test
+
+      - name: Generate deployment package
+        run: zip -r deploy_package.zip . -x '*.git*' 'node_modules/*'
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v20
+        with:
+          application_name: frontend
+          environment_name: Frontend-env
+          region: us-east-2
+          version_label: ${{github.run_number}}-${{github.sha}}
+          filename: deploy_package.zip
