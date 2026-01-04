@@ -13,12 +13,19 @@ jobs:
       - run: docker build -t scrahen/docker-react -f Dockerfile.dev .
       - run: docker run -e CI=true scrahen/docker-react npm run test
 
+      - name: Configure credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
+          iaws-region: us-east-2
+
       - name: Generate deployment package
         run: zip -r deploy_package.zip . -x '*.git*' 'node_modules/*'
 
       - name: Deploy to EB
         uses: einaregilsson/beanstalk-deploy@v20
         with:
+          use_repo_secrets: false
           application_name: frontend
           environment_name: Frontend-env
           region: us-east-2
