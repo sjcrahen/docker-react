@@ -17,7 +17,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v1
         with:
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
-          iaws-region: us-east-2
+          aws-region: us-east-2
 
       - name: Generate deployment package
         run: zip -r deploy_package.zip . -x '*.git*' 'node_modules/*'
